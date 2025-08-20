@@ -20,8 +20,8 @@ class BaseSolver(object):
         self.cfg = cfg
 
     def setup(self, ):
-        '''Avoid instantiating unnecessary classes 
-        '''
+        '''Prepares the model, loss and training env'''
+        #NOTE Avoid instantiating unnecessary classes
         cfg = self.cfg
         device = cfg.device
         self.device = device
@@ -30,22 +30,24 @@ class BaseSolver(object):
         self.model = dist.warp_model(cfg.model.to(
             device), cfg.find_unused_parameters, cfg.sync_bn)
         self.criterion = cfg.criterion.to(device)
+        '''If criterion (loss function object) has any internal tensors (say weight for class imbalance), they must be on CPU/GPU too as the model outputs.'''
         self.postprocessor = cfg.postprocessor
 
         # NOTE (lvwenyu): should load_tuning_state before ema instance building
         if self.cfg.tuning:
+            '''Loads tuning checkpoint if needed'''
             print(f'Tuning checkpoint from {self.cfg.tuning}')
             self.load_tuning_state(self.cfg.tuning)
 
-        self.scaler = cfg.scaler
-        self.ema = cfg.ema.to(device) if cfg.ema is not None else None
+        self.scaler = cfg.scaler # for mixed precision training
+        self.ema = cfg.ema.to(device) if cfg.ema is not None else None # exponential moving average of model weights to improve stability
 
         self.output_dir = Path(cfg.output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def show_flops(self,input):
+        '''Placeholder method → child classes should implement how to show FLOPs'''
         raise NotImplementedError('')
-
 
     def train(self, ):
         self.setup()
@@ -65,6 +67,7 @@ class BaseSolver(object):
             shuffle=self.cfg.val_dataloader.shuffle)
 
     def eval(self, ):
+        '''Only for model testing/evaluation'''
         self.setup()
         self.val_dataloader = dist.warp_loader(
             self.cfg.val_dataloader,
@@ -75,14 +78,14 @@ class BaseSolver(object):
             self.resume(self.cfg.resume)
 
     def state_dict(self, last_epoch):
-        '''state dict
-        '''
+        '''to save the model's state so that the training can be paused and resumed later'''
         state = {}
         state['model'] = dist.de_parallel(self.model).state_dict()
         state['date'] = datetime.now().isoformat()
 
         # TODO
         state['last_epoch'] = last_epoch
+        # TODO meaning, not implemented yet?, so for now we are not allowed to pause the training? 
 
         if self.optimizer is not None:
             state['optimizer'] = self.optimizer.state_dict()
@@ -100,8 +103,8 @@ class BaseSolver(object):
         return state
 
     def load_state_dict(self, state):
-        '''load state dict
-        '''
+        '''to load all components back from a checkpoint history, ie. restores the training state'''
+
         # TODO
         if getattr(self, 'last_epoch', None) and 'last_epoch' in state:
             self.last_epoch = state['last_epoch']
@@ -131,13 +134,13 @@ class BaseSolver(object):
             print('Loading scaler.state_dict')
 
     def save(self, path):
-        '''save state
+        '''saves the training state to a file (checkpoint)
         '''
         state = self.state_dict()
         dist.save_on_master(state, path)
 
     def resume(self, path):
-        '''load resume
+        '''loads checkpoint from a file and restores state
         '''
         # for cuda:0 memory
         state = torch.load(path, map_location='cpu')
@@ -146,6 +149,7 @@ class BaseSolver(object):
     def load_tuning_state(self, path,):
         """only load model for tuning and skip missed/dismatched keys
         """
+        '''Loads only the model weights, not optimizer/scheduler'''
         if 'http' in path:
             state = torch.hub.load_state_dict_from_url(
                 path, map_location='cpu')
@@ -167,6 +171,14 @@ class BaseSolver(object):
 
     @staticmethod
     def _matched_state(state: Dict[str, torch.Tensor], params: Dict[str, torch.Tensor]):
+        """
+        Compares model's expected parameters (state) with the checkpoint's parameters (params).
+        Creates:
+            matched_state → parameters with correct key & shape.
+            missed_list → missing keys.
+            unmatched_list → keys exist but shapes don't match.
+        This makes fine-tuning more robust to architecture differences.
+        """
         missed_list = []
         unmatched_list = []
         matched_state = {}
@@ -186,3 +198,7 @@ class BaseSolver(object):
 
     def val(self, ):
         raise NotImplementedError('')
+
+    '''
+    Placeholders -> Child classes must implement how to actually train (fit) and how to validate (val)
+    '''
