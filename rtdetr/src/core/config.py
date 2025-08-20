@@ -16,6 +16,15 @@ __all__ = ['BaseConfig', ]
 
 
 class BaseConfig(object):
+    '''Fondational configuration class for training and evaluation in deep learning workflows'''
+    '''
+    - Manages model components: model, postprocessor, criterion, optimizer, scheduler, dataloaders, EMA, AMP scaler.
+    - Handles training/validation datasets, batch sizes, shuffling, and collate functions.
+    - Stores runtime options: resume, tuning, epochs, device, logging, output directory, checkpointing.
+    - Provides property setters/getters for all major attributes, with default behaviors and type checks.
+    - Automatically selects device (CPU/GPU) based on availability.
+    '''
+
     # TODO property
 
     def __init__(self) -> None:

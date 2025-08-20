@@ -12,11 +12,14 @@ from .yaml_utils import load_config, merge_config, create, merge_dict
 
 
 class YAMLConfig(BaseConfig):
+    '''extends BaseConfig to support config via YAML files'''
+
     def __init__(self, cfg_path: str, **kwargs) -> None:
         super().__init__()
 
         cfg = load_config(cfg_path)
         merge_dict(cfg, kwargs)
+        '''Loads configuration from a YAML file and merges with additional keyword arguments.'''
 
         # pprint(cfg)
 

@@ -36,6 +36,7 @@ def register(cls: type):
 
 
 def extract_schema(cls: type):
+    '''Extracts constructor argument schema from a class'''
     '''
     Args:
         cls (type),
@@ -70,7 +71,7 @@ def extract_schema(cls: type):
 
 
 def create(type_or_name, **kwargs):
-    '''
+    ''' Instantiates objects from registered classes/functions using config and dependency injection.
     '''
     assert type(type_or_name) in (type, str), 'create should be class or name.'
     name = type_or_name if isinstance(
