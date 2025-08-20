@@ -1,0 +1,95 @@
+__include__:
+  [
+    "../dataset/coco_detection.yml",
+    "../runtime.yml",
+    "./include/dataloader.yml",
+    "./include/optimizer.yml",
+  ]
+
+output_dir: ./output/rtdetr_mobilenet_coco_linear
+
+task: detection
+
+model: RTDETR
+criterion: SetCriterion
+postprocessor: RTDETRPostProcessor
+
+RTDETR:
+  backbone: MobileNetWithExtraBlocks
+  encoder: HybridEncoder
+  decoder: RTDETRTransformer
+  multi_scale: [480, 512, 544, 576, 608,640, 640, 640, 672, 704, 736, 768,800]
+
+MobileNetWithExtraBlocks:
+  train_backbone: True
+  load_pretrained: True
+HybridEncoder:
+  in_channels: [40, 112, 160]
+  hidden_dim: 256
+  use_encoder_idx: [2]
+  num_encoder_layers: 1
+  nhead: 8
+  attention_type: "linear"
+
+
+  # nhead: 8
+  # dim_feedforward: 1024
+  # dropout: 0.
+  # enc_act: "gelu"
+  # pe_temperature: 10000
+  expansion: 0.5
+
+  # cross
+  # expansion: 1.0
+  # depth_mult: 1
+  act: 'silu'
+
+  # eval
+  # eval_spatial_size: [640, 640]
+
+RTDETRTransformer:
+  feat_channels: [256, 256]
+  feat_strides: [8, 16]
+  num_queries: 300
+  nhead: 8
+  # hidden_dim: 256
+  # num_levels: 3
+
+  # num_queries: 300
+  num_decoder_layers: 3
+  num_denoising: 100
+
+  eval_idx: -1
+  # eval_spatial_size: [640, 640]
+  # use_focal_loss: True
+
+RTDETRPostProcessor:
+  num_top_queries: 300
+
+SetCriterion:
+  weight_dict: { loss_vfl: 1, loss_bbox: 5, loss_giou: 2 }
+  losses: ["vfl", "boxes"]
+  alpha: 0.75
+  gamma: 2.0
+
+  matcher:
+    type: HungarianMatcher
+    weight_dict: { cost_class: 2, cost_bbox: 5, cost_giou: 2 }
+    # use_focal_loss: True
+    alpha: 0.25
+    gamma: 2.0
+
+optimizer:
+  type: AdamW
+  params:
+    - params: "^(?=.*backbone)(?=.*norm).*$"
+      lr: 0.00001
+      weight_decay: 0.
+    - params: "^(?=.*backbone)(?!.*norm).*$"
+      lr: 0.00001
+    - params: "^(?=.*(?:encoder|decoder))(?=.*(?:norm|bias)).*$"
+      weight_decay: 0.
+
+  lr: 0.0001
+  betas: [0.9, 0.999]
+  weight_decay: 0.0001

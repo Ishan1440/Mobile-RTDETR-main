@@ -1,0 +1,15 @@
+use_ema: True
+ema:
+  type: ModelEMA
+  decay: 0.9999
+  warmups: 2000
+
+find_unused_parameters: True
+
+epoches: 100
+clip_max_norm: 0.1
+
+lr_scheduler:
+  type: MultiStepLR
+  milestones: [50]
+  gamma: 0.5
