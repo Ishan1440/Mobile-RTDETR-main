@@ -172,7 +172,10 @@ class BaseSolver(object):
     @staticmethod
     def _matched_state(state: Dict[str, torch.Tensor], params: Dict[str, torch.Tensor]):
         """
-        Compares model's expected parameters (state) with the checkpoint's parameters (params).
+        Compares model's expected parameters (state) with the checkpoint's parameters (params). to load checkpoints safely when your model's architecture may not match exactly with the checkpoint's saved parameters.
+        Parameters:
+            state - model's expected params (from model.state_dict())
+            params - The parameters loaded from checkpoint file
         Creates:
             matched_state → parameters with correct key & shape.
             missed_list → missing keys.
@@ -183,6 +186,7 @@ class BaseSolver(object):
         unmatched_list = []
         matched_state = {}
         for k, v in state.items():
+            # k - param name, v - expected tensor (correct shape for your current model)
             if k in params:
                 if v.shape == params[k].shape:
                     matched_state[k] = params[k]
