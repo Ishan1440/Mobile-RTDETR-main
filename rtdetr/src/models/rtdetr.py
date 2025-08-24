@@ -18,15 +18,21 @@ __all__ = ['RTDETR', ]
 
 @register
 class RTDETR(nn.Module):
-    __inject__ = ['backbone', 'encoder', 'decoder', ]
+    __inject__ = ['backbone', 'encoder', 'decoder', ] # the list tells the registry which submodules to be passed when constructing RTDETR, for the framework to automatically handle dependency injection
 
     def __init__(self, backbone: nn.Module, encoder, decoder, multi_scale=None):
+        '''
+        backbone: extracts low-level and high-level features from the input image
+        encoder: processes multi-scale features, adds context, and builds strong representations
+        decoder: predicts object queries -> bounding boxes and classes
+        multi_scale: list of possible input resolutions, used for multi_scale training to improve robustness
+        '''
         super().__init__()
         self.backbone = backbone
         n_parameters = sum(
             p.numel()
-            for p in self.backbone.parameters() if p.requires_grad)
-        print("No of Parameters in backbone: ", n_parameters/1e6)
+            for p in self.backbone.parameters() if p.requires_grad) # to count only the trainable parameters (gradient not frozen)
+        print("No of Parameters in backbone: ", n_parameters/1e6) # to track model size and memory footprint
 
         self.encoder = encoder
         n_parameters = sum(
@@ -51,10 +57,11 @@ class RTDETR(nn.Module):
         if self.multi_scale and self.training:
             sz = np.random.choice(self.multi_scale)
             x = F.interpolate(x, size=[sz, sz])
+            # resizing to improve model generalization
 
-        x = self.backbone(x)
-        x = self.encoder(x)
-        x = self.decoder(x, targets)
+        x = self.backbone(x) # image goes through the backbone to extract feature maps
+        x = self.encoder(x) # backbone features passed into the transformer encoder, which aggregates global context (for detecting objects in cluttered background)
+        x = self.decoder(x, targets) # decoder uses object queries? to predict bounding boxes + class probabilities
 
         return x
 
