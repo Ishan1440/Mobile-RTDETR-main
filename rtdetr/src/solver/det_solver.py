@@ -71,6 +71,8 @@ class DetSolver(BaseSolver):
             '''Saves the training state (checkpoint) for every epoch'''
 
             module = self.ema.module if self.ema else self.model
+            # record previous best bbox AP to detect improvement this epoch
+            prev_best_bbox_ap = best_stat.get('coco_eval_bbox', float('-inf'))
             test_stats, coco_evaluator = evaluate(
                 module, self.criterion, self.postprocessor, self.val_dataloader, base_ds, self.device, self.output_dir
             )
@@ -86,6 +88,13 @@ class DetSolver(BaseSolver):
                     best_stat[k] = test_stats[k][0]
             '''Updates best_stat with the best epoch'''
             print('best_stat: ', best_stat)
+
+            # Save best checkpoint when bbox AP improves
+            if self.output_dir and 'coco_eval_bbox' in test_stats and best_stat.get('coco_eval_bbox', float('-inf')) > prev_best_bbox_ap:
+                checkpoints_dir = self.output_dir / 'checkpoints'
+                checkpoints_dir.mkdir(parents=True, exist_ok=True)
+                best_ckpt_path = checkpoints_dir / 'best.pth'
+                dist.save_on_master(self.state_dict(epoch), best_ckpt_path)
 
             log_stats = {
                 **{f'train_{k}': v for k, v in train_stats.items()},
