@@ -57,12 +57,14 @@ class DetSolver(BaseSolver):
             '''Updates the learning rate according to the scheduler policy'''
 
             if self.output_dir:
-                checkpoint_paths = [self.output_dir / 'checkpoint.pth']
+                checkpoints_dir = self.output_dir / 'checkpoints'
+                checkpoints_dir.mkdir(parents=True, exist_ok=True)
+                checkpoint_paths = [checkpoints_dir / 'checkpoint.pth']
                 # extra checkpoint before LR drop and every 100 epochs
                 '''didn't understand the above comment!'''
                 if (epoch + 1) % args.checkpoint_step == 0:
                     checkpoint_paths.append(
-                        self.output_dir / f'checkpoint{epoch:04}.pth')
+                        checkpoints_dir / f'checkpoint{epoch:04}.pth')
                 for checkpoint_path in checkpoint_paths:
                     dist.save_on_master(
                         self.state_dict(epoch), checkpoint_path)

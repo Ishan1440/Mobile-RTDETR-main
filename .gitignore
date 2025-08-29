@@ -172,5 +172,7 @@ cython_debug/
 .vscode/
 
 # Ignore the coco dataset
-rtdetr/configs/dataset/coco/
-
+rtdetr/configs/dataset/
+dataset/
+output/mrtdetr_coco
+output/checkpoint0054.pth
