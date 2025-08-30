@@ -6,3 +6,6 @@ pycocotools
 PyYAML
 scipy
 transformers
+torchinfo
+numpy==1.26.2
+fvcore
